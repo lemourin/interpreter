@@ -1,0 +1,89 @@
+entrypoints Code ;
+
+CCode.   Code ::= Line ";" Code ;
+CEmpty.  Code ::= ;
+LDecl.   Line ::= Declaration ;
+LExpr.   Line ::= Exp ;
+LFor.    Line ::= "for" Ident "in" Exp "{" Code "}" ;
+LReturn. Line ::= "return" Exp ;
+LAssign. Line ::= Statement "=" Exp ;
+LCond.   Line ::= "if" Exp "{" Code "}" ;
+LElse.   Line ::= "if" Exp "{" Code "}" "else" "{" Code "}" ;
+LWhile.  Line ::= "while" Exp "{" Code "}" ;
+
+EDecl1.  Declaration ::= Type Decl ;
+EDecl2.  Declaration ::= StructDeclaration ;
+EDecl3.  SingleDecl  ::= Ident ;
+EDecl4.  SingleDecl  ::= Ident "=" Exp ;
+EDecl5.  Decl        ::= SingleDecl ;
+EDecl6.  Decl        ::= SingleDecl "," Decl ;
+
+SDecl.            StructDeclaration ::= "struct" Ident "{" ManyDecl "}" ;
+SDeclFieldEmpty.  ManyDecl          ::= ;
+SDeclField.       ManyDecl          ::= Declaration ";" ManyDecl ;
+
+EAdd.     Exp  ::= Exp  "+" Exp1 ;
+ESub.     Exp  ::= Exp  "-" Exp1 ;
+EMul.     Exp1 ::= Exp1 "*" Exp2 ;
+EDiv.     Exp1 ::= Exp1 "/" Exp2 ;
+EInc.     Exp1 ::= Exp1 "+=" Exp2 ;
+EDec.     Exp1 ::= Exp1 "-=" Exp2 ;
+EInc1.    Exp1 ::= Exp1 "++" ;
+EDec1.    Exp1 ::= Exp1 "--" ;
+EEqual.   Exp1 ::= Exp1 "==" Exp2 ;
+ENEqual.  Exp1 ::= Exp1 "!=" Exp2 ;
+EGEqual.  Exp1 ::= Exp1 ">=" Exp2 ;
+ELEqual.  Exp1 ::= Exp1 "<=" Exp2 ;
+EGreater. Exp1 ::= Exp1 ">" Exp2 ;
+ELess.    Exp1 ::= Exp1 "<" Exp2 ;
+EOr.      Exp1 ::= Exp1 "||" Exp2 ;
+EAnd.     Exp1 ::= Exp1 "&&" Exp2 ;
+ELiteral. Exp2 ::= Statement ;
+
+VIdent.     Statement ::= Ident ;
+VString.    Statement ::= String ;
+VInt.       Statement ::= Integer ;
+VCall.      Statement ::= Call ;
+VFunc.      Statement ::= FDecl ;
+VSubscript. Statement ::= Statement "[" Exp "]" ;
+VArray.     Statement ::= "[" ManyExp "]" ;
+VAccess.    Statement ::= Statement "." Ident ;
+
+EManyExp.      ManyExp      ::= ;
+ENonEmptyExp.  ManyExp      ::= NonEmptyExp ;
+EOneExp.       NonEmptyExp  ::= Exp ;
+EMoreExp.      NonEmptyExp  ::= Exp "," NonEmptyExp ;
+
+FCall.            Call                  ::= Ident "(" Arguments ")" ;
+FCArguments.      Arguments             ::= NonEmptyArguments ;
+FNoArguments.     Arguments             ::= ;
+FOneArgument.     NonEmptyArguments     ::= Exp ;
+FManyArguments.   NonEmptyArguments     ::= Exp "," NonEmptyArguments ;
+
+FFunctionDecl.       FDecl               ::=  "[]" "(" FArguments ")" "->" Type "{" Code "}" ;
+FTypedArguments.     FArguments          ::= FNonEmptyArguments ;
+FNoTypedArguments.   FArguments          ::= ;
+FOneTypedArgument.   FNonEmptyArguments  ::= FArgClause ;
+FManyTypedArguments. FNonEmptyArguments  ::= FArgClause "," FNonEmptyArguments ;
+FFunctionArgClause.  FArgClause          ::= Type Ident ;
+
+Tvoid.        Type ::= "void" ;
+Tint.         Type ::= "int" ;
+Tstring.      Type ::= "string" ;
+Tauto.        Type ::= "auto" ;
+Tarray.       Type ::= "array" "[" Type "]" ;
+Tstruct.      Type ::= Ident ;
+
+
+Tfunction.    Type ::= "function" "[" Types "->" Type "]" ;
+
+Ttuple.       Type  ::= "tuple" "[" Types "]" ;
+Ttypes.       Types ::= Type "," Types ;
+Ttype.        Types ::= Type ;
+Tempty.       Types ::= ;
+
+coercions Exp 2 ;
+
+comment "/*" "*/" ;
+comment "//";
+comment "#";
