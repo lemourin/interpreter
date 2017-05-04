@@ -1,5 +1,5 @@
-unnamed-yet language
-====================
+lang language
+=============
 
 This language's syntax is based on `C`. Things which make this language  
 a little bit different are:

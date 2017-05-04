@@ -1,5 +1,12 @@
 SHELL=bash
 
+SOURCES := \
+	grammar/AbsLang.hs \
+	grammar/LexLang.hs \
+	grammar/ParLang.hs \
+	interpreter/Main.hs \
+	interpreter/Interpreter.hs
+
 all: main
 
 grammar/Makefile: grammar/lang.cf
@@ -7,8 +14,20 @@ grammar/Makefile: grammar/lang.cf
 	bnfc lang.cf --make; \
 	popd;
 
-main: grammar/Makefile interpreter/Main.hs
-	ghc --make -igrammar interpreter/Main.hs -o main
+grammar/AbsLang.hs: grammar/Makefile
+
+grammar/LexLang.hs: grammar/Makefile
+	pushd grammar; \
+	alex -g LexLang.x; \
+	popd;
+
+grammar/ParLang.hs: grammar/Makefile
+	pushd grammar; \
+	happy -gca ParLang.y; \
+	popd;
+
+main: $(SOURCES)
+	ghc --make -igrammar -iinterpreter interpreter/Main.hs -o main
 
 clean:
 	rm -f \
@@ -18,7 +37,6 @@ clean:
 	pushd grammar; \
 	if [ -e Makefile ]; then \
 		make distclean; \
-		touch -m lang.cf; \
 	fi; \
 	popd;
 
