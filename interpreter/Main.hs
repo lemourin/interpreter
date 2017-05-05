@@ -6,7 +6,9 @@ import ParLang
 import ErrM
 import Interpreter
 
-main = interact lang
+main = do
+  interact lang
+  putStrLn ""
 
 lang s = 
   let 

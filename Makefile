@@ -7,7 +7,8 @@ SOURCES := \
 	interpreter/Main.hs \
 	interpreter/Interpreter.hs
 
-all: main
+all: $(SOURCES)
+	cabal build
 
 grammar/Makefile: grammar/lang.cf
 	pushd grammar; \
@@ -26,14 +27,8 @@ grammar/ParLang.hs: grammar/Makefile
 	happy -gca ParLang.y; \
 	popd;
 
-main: $(SOURCES)
-	ghc --make -igrammar -iinterpreter interpreter/Main.hs -o main
-
 clean:
-	rm -f \
-		interpreter/*.hi \
-		interpreter/*.o \
-		main; \
+	cabal clean; \
 	pushd grammar; \
 	if [ -e Makefile ]; then \
 		make distclean; \
