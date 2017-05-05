@@ -1,13 +1,11 @@
 SHELL=bash
 
-SOURCES := \
+SOURCES_GRAMMAR := \
 	grammar/AbsLang.hs \
 	grammar/LexLang.hs \
 	grammar/ParLang.hs \
-	interpreter/Main.hs \
-	interpreter/Interpreter.hs
 
-all: $(SOURCES)
+all: $(SOURCES_GRAMMAR)
 	cabal build
 
 grammar/Makefile: grammar/lang.cf

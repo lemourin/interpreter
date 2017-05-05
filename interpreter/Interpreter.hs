@@ -25,5 +25,5 @@ interpret code = interpret' code (State Map.empty) where
             let
               (value, new_state) = interpret_expression exp state
             in
-              value ++ "\n" ++ interpret' rest new_state
+              value ++ "\n" ++ (interpret' rest new_state)
       CEmpty -> "no lines"
