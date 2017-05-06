@@ -4,13 +4,16 @@ import AbsLang
 import LexLang
 import ParLang
 import ErrM
-import qualified Data.Map.Strict as Map
+import qualified Data.Map as Map
 
 data ValueGeneric a b = ValueString a | ValueInteger b | ValueVoid
 type Value = ValueGeneric String Integer
+type Location = Integer
 
 data StateData = State {
-  environment_stack :: [Map.Map Ident (Type, Value)]
+  environment_stack :: [Map.Map Ident Location],
+  store :: Map.Map Location (Type, Value),
+  next :: Location
 }
 
 show' :: Value -> String
@@ -28,15 +31,31 @@ mul' _ _ = Bad "mul' :: Invalid types"
 div' (ValueInteger v1) (ValueInteger v2) = Ok (ValueInteger (v1 `div` v2))
 div' _ _ = Bad "div' :: Invalid types"
 
-top_env (State (h:t)) = h
+state_top_env (State (h:_) _ _) = h
+state_store (State _ store _) = store
+state_next (State _ _ next) = next
+state_store_lookup location state = Map.lookup location (state_store state)
+state_location_lookup ident (State stack store _) =
+  foldl func Nothing stack where
+    func acc env = case acc of 
+      Nothing -> Map.lookup ident env
+      _ -> acc
+state_value_lookup ident state = 
+  case state_location_lookup ident state of
+    Just location -> state_store_lookup location state
+    Nothing -> Nothing
+state_add_variable ident variable (State (top:rest) store next) = 
+  State (new_env:rest) new_store (next + 1) where
+    new_env = Map.insert ident next top
+    new_store = Map.insert next variable store
 
-interpret_statement :: Statement -> StateData-> Err (Value, StateData)
+interpret_statement :: Statement -> StateData -> Err (Value, StateData)
 interpret_statement stmt state = 
   case stmt of
     VInt i -> Ok (ValueInteger i, state)
     VString i -> Ok (ValueString i, state)
-    VIdent i -> case Map.lookup i (top_env state) of
-      Just (tt, v) -> Ok (v, state)
+    VIdent i -> case state_value_lookup i state of
+      Just (_, v) -> Ok (v, state)
       Nothing -> Bad ((show i) ++ " not found")
 
 interpret_expression :: Exp -> StateData -> Err (Value, StateData)
@@ -68,7 +87,7 @@ match_type tt value =
     _ -> False
 
 interpret_declaration :: Declaration -> StateData -> Err (Value, StateData)
-interpret_declaration decl (State (t:rest)) = 
+interpret_declaration decl state = 
   case decl of 
     EDecl tt declaration -> case declaration of 
       EDeclOne e -> add_variable tt e
@@ -87,11 +106,10 @@ interpret_declaration decl (State (t:rest)) =
             False -> Bad "Type mismatch"
           Bad descr -> Bad descr
       where
-        state = (State (t:rest))
-        add_to_state ident value (State (t:rest)) = 
-          case Map.lookup ident t of
-            Nothing -> Ok (ValueVoid, (State (new_env:rest))) where
-              new_env = Map.insert ident (tt, value) t
+        add_to_state ident value state = 
+          case state_value_lookup ident state of
+            Nothing -> Ok (ValueVoid, new_state) where
+              new_state = state_add_variable ident (tt, value) state
             Just _ -> Bad ((show ident) ++ " already declared")
         default_value tt = case tt of
           Tint -> ValueInteger 0
@@ -101,7 +119,7 @@ interpret_assignment :: Statement -> Exp -> StateData -> Err (Value, StateData)
 interpret_assignment stmt expr state = 
   case stmt of 
     VIdent ident -> 
-      case Map.lookup ident (top_env state) of 
+      case state_value_lookup ident state of 
         Nothing -> Bad (show ident ++ " not found")
         Just (tt, _) -> 
           case interpret_expression expr state of
@@ -110,9 +128,7 @@ interpret_assignment stmt expr state =
                 False -> Bad "Type mismatch"
                 True -> Ok (value, updated_state)
               where
-                updated_state = case new_state of 
-                  State (e:rest) -> 
-                    State ((Map.insert ident (tt, value) e):rest)
+                updated_state = state_add_variable ident (tt, value) new_state
             Bad descr -> Bad descr
     _ -> Bad "Invalid lvalue"
 
@@ -124,7 +140,7 @@ interpret_line line state =
     LAssign stmt expr -> interpret_assignment stmt expr state
 
 interpret :: Code -> (Err Value)
-interpret code = interpret' code (State [Map.empty]) where
+interpret code = interpret' code (State [Map.empty] Map.empty 0) where
   interpret' code state = 
     case code of
       CCode line rest ->
