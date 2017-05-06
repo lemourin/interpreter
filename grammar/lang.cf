@@ -11,12 +11,12 @@ LCond.   Line ::= "if" Exp "{" Code "}" ;
 LElse.   Line ::= "if" Exp "{" Code "}" "else" "{" Code "}" ;
 LWhile.  Line ::= "while" Exp "{" Code "}" ;
 
-EDecl1.  Declaration ::= Type Decl ;
-EDecl2.  Declaration ::= StructDeclaration ;
-EDecl3.  SingleDecl  ::= Ident ;
-EDecl4.  SingleDecl  ::= Ident "=" Exp ;
-EDecl5.  Decl        ::= SingleDecl ;
-EDecl6.  Decl        ::= SingleDecl "," Decl ;
+EDecl.        Declaration ::= Type Decl ;
+EDeclStruct.  Declaration ::= StructDeclaration ;
+EDeclNoInit.  SingleDecl  ::= Ident ;
+EDeclInit.    SingleDecl  ::= Ident "=" Exp ;
+EDeclOne.     Decl        ::= SingleDecl ;
+EDeclMany.    Decl        ::= SingleDecl "," Decl ;
 
 SDecl.            StructDeclaration ::= "struct" Ident "{" ManyDecl "}" ;
 SDeclFieldEmpty.  ManyDecl          ::= ;
