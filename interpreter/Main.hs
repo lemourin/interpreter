@@ -14,7 +14,7 @@ lang s =
   let 
     Ok a = pCode (myLexer s) 
   in 
-    case interpret a of 
-      Ok code -> show' code
+    case interpret a state_empty of 
+      Ok (code, _) -> show' code
       Bad err -> show' (ValueString err)
 
