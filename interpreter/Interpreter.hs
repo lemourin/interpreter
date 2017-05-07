@@ -6,10 +6,11 @@ import ParLang
 import ErrM
 import qualified Data.Map as Map
 
-data ValueGeneric a b c = ValueString a  | 
-                          ValueInteger b | 
-                          ValueBool c    | 
-                          ValueVoid
+data ValueGeneric a b c = ValueString a       | 
+                          ValueInteger b      | 
+                          ValueBool c         | 
+                          ValueVoid           |
+                          ValueOutputString a
 type Value = ValueGeneric String Integer Bool
 type Location = Integer
 
@@ -23,6 +24,7 @@ show' :: Value -> String
 show' (ValueString str) = str
 show' (ValueInteger int) = show int
 show' (ValueBool bool) = show bool
+show' (ValueOutputString str) = str
 show' ValueVoid = ""
 
 add' (ValueInteger v1) (ValueInteger v2) = Ok (ValueInteger (v1 + v2))
@@ -85,17 +87,17 @@ state_set_variable location variable (State env store next) =
   State env new_store next where
     new_store = Map.insert location variable store
 
-concat_values v1 v2 =
-  ValueString (show' v1 ++ separator ++ show' v2) where
-    separator = case (v1, v2) of
-      (ValueVoid, _) -> ""
-      (_, ValueVoid) -> ""
-      _ -> "\n"
-concat_descr v descr = 
-  show' v ++ separator ++ descr where
-    separator = case v of 
-      ValueVoid -> ""
-      _ -> "\n"
+concat_outputs v1 v2 =
+  case (v1, v2) of 
+    (ValueOutputString str1, ValueOutputString str2) ->
+      ValueOutputString (str1 ++ "\n" ++ str2)
+    (ValueOutputString _, _) -> v1
+    (_, ValueOutputString _) -> v2
+    _ -> ValueVoid
+concat_descr v descr =
+  case v of
+    ValueOutputString str -> str ++ "\n" ++ descr
+    _ -> descr
 
 interpret_statement :: Statement -> StateData -> Err (Value, StateData)
 interpret_statement stmt state = 
@@ -226,10 +228,16 @@ interpret_while expr code state =
             Ok (value, state) -> 
               case interpret_while expr code state of 
                 Ok (next_value, next_state) -> 
-                  Ok ((concat_values value next_value), next_state)
+                  Ok ((concat_outputs value next_value), next_state)
                 Bad descr -> Bad (concat_descr value descr)
             Bad descr -> Bad descr
         ValueBool False -> Ok (ValueVoid, new_state)
+    Bad descr -> Bad descr
+
+interpret_print :: Exp -> StateData -> Err (Value, StateData)
+interpret_print exp state =
+  case interpret_expression exp state of 
+    Ok (value, state) -> Ok ((ValueOutputString (show' value)), state)
     Bad descr -> Bad descr
 
 interpret_line :: Line -> StateData -> Err (Value, StateData)
@@ -241,6 +249,7 @@ interpret_line line state =
     LElse expr code1 code2 -> interpret_condition expr code1 code2 state
     LCond expr code -> interpret_condition expr code CEmpty state
     LWhile expr code -> interpret_while expr code state
+    LPrint expr -> interpret_print expr state
 
 interpret :: Code -> StateData -> Err (Value, StateData)
 interpret code state = 
@@ -250,7 +259,7 @@ interpret code state =
           Ok (value, new_state) -> 
             case interpret rest new_state of
               Ok (next_value, state) -> 
-                Ok (concat_values value next_value, state)
+                Ok (concat_outputs value next_value, state)
               Bad descr -> Bad (concat_descr value descr)
           Bad descr -> Bad descr
       CEmpty -> Ok (ValueVoid, state)

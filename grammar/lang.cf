@@ -10,6 +10,7 @@ LAssign. Line ::= Statement "=" Exp ;
 LCond.   Line ::= "if" Exp "{" Code "}" ;
 LElse.   Line ::= "if" Exp "{" Code "}" "else" "{" Code "}" ;
 LWhile.  Line ::= "while" Exp "{" Code "}" ;
+LPrint.  Line ::= "print" Exp ;
 
 EDecl.        Declaration ::= Type Decl ;
 EDeclStruct.  Declaration ::= StructDeclaration ;
