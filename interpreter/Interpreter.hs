@@ -81,6 +81,21 @@ state_add_variable ident variable (State (top:rest) store next) =
   State (new_env:rest) new_store (next + 1) where
     new_env = Map.insert ident next top
     new_store = Map.insert next variable store
+state_set_variable location variable (State env store next) =
+  State env new_store next where
+    new_store = Map.insert location variable store
+
+concat_values v1 v2 =
+  ValueString (show' v1 ++ separator ++ show' v2) where
+    separator = case (v1, v2) of
+      (ValueVoid, _) -> ""
+      (_, ValueVoid) -> ""
+      _ -> "\n"
+concat_descr v descr = 
+  show' v ++ separator ++ descr where
+    separator = case v of 
+      ValueVoid -> ""
+      _ -> "\n"
 
 interpret_statement :: Statement -> StateData -> Err (Value, StateData)
 interpret_statement stmt state = 
@@ -171,33 +186,50 @@ interpret_assignment :: Statement -> Exp -> StateData -> Err (Value, StateData)
 interpret_assignment stmt expr state = 
   case stmt of 
     VIdent ident -> 
-      case state_value_lookup ident state of 
+      case state_location_lookup ident state of 
         Nothing -> Bad (show ident ++ " not found")
-        Just (tt, _) -> 
+        Just location -> 
           case interpret_expression expr state of
             Ok (value, new_state) -> 
               case match_type tt value of 
                 False -> Bad "Type mismatch"
                 True -> Ok (value, updated_state)
               where
-                updated_state = state_add_variable ident (tt, value) new_state
+                Just (tt, _) = state_store_lookup location new_state
+                updated_state = 
+                  state_set_variable location (tt, value) new_state
             Bad descr -> Bad descr
     _ -> Bad "Invalid lvalue"
+
+interpret_scope :: Code -> StateData -> Err (Value, StateData)
+interpret_scope code (State (t:rest) store next) =
+  case interpret code (State (Map.empty:t:rest) store next) of
+    Ok (value, State _ store next) -> Ok (value, (State (t:rest) store next))
+    Bad descr -> Bad descr
 
 interpret_condition :: Exp -> Code -> Code -> StateData -> Err (Value, StateData)
 interpret_condition expr code1 code2 state = 
   case interpret_expression expr state of 
     Ok (value, new_state) -> 
       case value of 
-        ValueBool True -> execute_code code1 new_state 
-        ValueBool False -> execute_code code2 new_state
-      where
-        execute_code code state = case state of
-          State (t:rest) store next -> 
-            case interpret code (State (t:t:rest) store next) of
-              Ok (value, State _ store next) -> 
-                Ok (value, (State (t:rest) store next))
-              Bad descr -> Bad descr
+        ValueBool True -> interpret_scope code1 new_state 
+        ValueBool False -> interpret_scope code2 new_state
+    Bad descr -> Bad descr
+
+interpret_while :: Exp -> Code -> StateData -> Err (Value, StateData)
+interpret_while expr code state = 
+  case interpret_expression expr state of
+    Ok (value, new_state) ->
+      case value of
+        ValueBool True -> 
+          case interpret_scope code new_state of 
+            Ok (value, state) -> 
+              case interpret_while expr code state of 
+                Ok (next_value, next_state) -> 
+                  Ok ((concat_values value next_value), next_state)
+                Bad descr -> Bad (concat_descr value descr)
+            Bad descr -> Bad descr
+        ValueBool False -> Ok (ValueVoid, new_state)
     Bad descr -> Bad descr
 
 interpret_line :: Line -> StateData -> Err (Value, StateData)
@@ -208,6 +240,7 @@ interpret_line line state =
     LAssign stmt expr -> interpret_assignment stmt expr state
     LElse expr code1 code2 -> interpret_condition expr code1 code2 state
     LCond expr code -> interpret_condition expr code CEmpty state
+    LWhile expr code -> interpret_while expr code state
 
 interpret :: Code -> StateData -> Err (Value, StateData)
 interpret code state = 
@@ -216,15 +249,8 @@ interpret code state =
         case interpret_line line state of 
           Ok (value, new_state) -> 
             case interpret rest new_state of
-              Ok (next_value, state) -> Ok (ValueString str, state) where
-                separator = case (value, next_value) of
-                  (ValueVoid, _) -> ""
-                  (_, ValueVoid) -> ""
-                  _ -> "\n"
-                str = show' value ++ separator ++ show' next_value
-              Bad descr -> Bad (show' value ++ separator ++ descr) where
-                separator = case value of 
-                  ValueVoid -> ""
-                  _ -> "\n"
+              Ok (next_value, state) -> 
+                Ok (concat_values value next_value, state)
+              Bad descr -> Bad (concat_descr value descr)
           Bad descr -> Bad descr
       CEmpty -> Ok (ValueVoid, state)
