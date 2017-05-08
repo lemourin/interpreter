@@ -118,7 +118,7 @@ interpret_call (FCall ident args) state =
     Just func@(_, ValueFunction env_stack ret fargs code) -> 
       case fstate of 
         Ok fstate ->
-          case interpret_scope code (state_add_variable ident func fstate) of 
+          case interpret_scope code fstate of
             Ok (ValueReturn value, new_state) -> evaluate value new_state
             Ok (value, new_state) -> evaluate value new_state
             Bad descr -> Bad descr
@@ -238,7 +238,17 @@ interpret_declaration decl state =
         add_to_state ident value state = 
           case Map.lookup ident (state_top_scope state) of
             Nothing -> Ok (ValueVoid, new_state) where
-              new_state = state_add_variable ident (tt, value) state
+              new_state =
+                case value of
+                  ValueFunction (_:env) ret arg code ->
+                    State (ntop:env) nstore nnext noutput where
+                      ntop = Map.insert ident next (state_top_scope state)
+                      nstore = Map.insert next (tt, nvalue) (state_store state)
+                      nvalue = ValueFunction (ntop:env) ret arg code
+                      nnext = next + 1
+                      next = state_next state
+                      noutput = state_output state
+                  _ -> state_add_variable ident (tt, value) state
             Just _ -> Bad ((show ident) ++ " already declared")
         default_value tt = case tt of
           Tint -> ValueInteger 0
