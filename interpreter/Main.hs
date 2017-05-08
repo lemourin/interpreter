@@ -6,15 +6,13 @@ import ParLang
 import ErrM
 import Interpreter
 
-main = do
-  interact lang
-  putStrLn ""
+main = interact lang
 
 lang s = 
   let 
     Ok a = pCode (myLexer s) 
   in 
     case interpret a state_empty of 
-      Ok (code, _) -> show' code
-      Bad err -> show' (ValueString err)
+      Ok (_, state) -> state_output state ++ "\n"
+      Bad err -> err ++ "\n"
 

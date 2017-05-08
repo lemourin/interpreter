@@ -4,27 +4,30 @@ import AbsLang
 import LexLang
 import ParLang
 import ErrM
-import qualified Data.Map as Map
+import qualified Data.Map.Lazy as Map
 
-data ValueGeneric a b c = ValueString a       | 
-                          ValueInteger b      | 
-                          ValueBool c         | 
-                          ValueVoid           |
-                          ValueOutputString a
-type Value = ValueGeneric String Integer Bool
+data Value = 
+  ValueString String   | 
+  ValueInteger Integer | 
+  ValueBool Bool       | 
+  ValueVoid            |
+  ValueFunction [Environment] Type [(Type, Ident)] Code |
+  ValueReturn Value 
+
+type Environment = Map.Map Ident Location
 type Location = Integer
 
 data StateData = State {
-  environment_stack :: [Map.Map Ident Location],
+  environment_stack :: [Environment],
   store :: Map.Map Location (Type, Value),
-  next :: Location
+  next :: Location,
+  output :: String
 }
 
 show' :: Value -> String
 show' (ValueString str) = str
 show' (ValueInteger int) = show int
 show' (ValueBool bool) = show bool
-show' (ValueOutputString str) = str
 show' ValueVoid = ""
 
 add' (ValueInteger v1) (ValueInteger v2) = Ok (ValueInteger (v1 + v2))
@@ -65,12 +68,14 @@ or' _ _ = Bad "or' :: Invalid types"
 and' (ValueBool v1) (ValueBool v2) = Ok (ValueBool (v1 && v2))
 and' _ _ = Bad "and' :: Invalid types"
 
-state_empty = State [Map.empty] Map.empty 0
-state_top_env (State (h:_) _ _) = h
-state_store (State _ store _) = store
-state_next (State _ _ next) = next
+state_empty = State [Map.empty] Map.empty 0 ""
+state_top_scope (State (h:_) _ _ _) = h
+state_environment (State e _ _ _) = e
+state_store (State _ store _ _) = store
+state_next (State _ _ next _) = next
+state_output (State _ _ _ output) = output
 state_store_lookup location state = Map.lookup location (state_store state)
-state_location_lookup ident (State stack store _) =
+state_location_lookup ident (State stack store _ _) =
   foldl func Nothing stack where
     func acc env = case acc of 
       Nothing -> Map.lookup ident env
@@ -79,25 +84,79 @@ state_value_lookup ident state =
   case state_location_lookup ident state of
     Just location -> state_store_lookup location state
     Nothing -> Nothing
-state_add_variable ident variable (State (top:rest) store next) = 
-  State (new_env:rest) new_store (next + 1) where
+state_add_variable ident variable (State (top:rest) store next output) = 
+  State (new_env:rest) new_store (next + 1) output where
     new_env = Map.insert ident next top
     new_store = Map.insert next variable store
-state_set_variable location variable (State env store next) =
-  State env new_store next where
+state_set_variable location variable (State env store next output) =
+  State env new_store next output where
     new_store = Map.insert location variable store
+state_set_output output (State e store next _) = 
+  State e store next output
+state_add_scope scope (State e store next output) =
+  State (scope:e) store next output
 
-concat_outputs v1 v2 =
-  case (v1, v2) of 
-    (ValueOutputString str1, ValueOutputString str2) ->
-      ValueOutputString (str1 ++ "\n" ++ str2)
-    (ValueOutputString _, _) -> v1
-    (_, ValueOutputString _) -> v2
-    _ -> ValueVoid
-concat_descr v descr =
-  case v of
-    ValueOutputString str -> str ++ "\n" ++ descr
-    _ -> descr
+concat_descr state descr = (state_output state) ++ "\n" ++ descr
+
+interpret_function_decl :: FDecl -> StateData -> Err (Value, StateData)
+interpret_function_decl (FFunctionDecl args ret code) state =
+  Ok ((ValueFunction env_stack ret arguments code), state) where
+    (State env_stack _ _ _) = state
+    arguments = extract_args args where
+      extract_args args = 
+        case args of 
+          FNoTypedArguments -> []
+          FTypedArguments args -> 
+            case args of 
+              (FOneTypedArgument (FFunctionArgClause tt ident)) -> [(tt, ident)]
+              (FManyTypedArguments (FFunctionArgClause tt ident) rest) ->
+                (tt, ident):(extract_args (FTypedArguments rest))
+
+interpret_call :: Call -> StateData -> Err (Value, StateData)
+interpret_call (FCall ident args) state =
+  case state_value_lookup ident state of
+    Just func@(_, ValueFunction env_stack ret fargs code) -> 
+      case fstate of 
+        Ok fstate ->
+          case interpret_scope code (state_add_variable ident func fstate) of 
+            Ok (ValueReturn value, new_state) -> evaluate value new_state
+            Ok (value, new_state) -> evaluate value new_state
+            Bad descr -> Bad descr
+          where 
+            evaluate value new_state =
+              case match_type ret value of
+                True -> Ok (value, State nenv nstore nnext noutput) where
+                  nenv = state_environment state
+                  nstore = state_store new_state
+                  nnext = state_next new_state
+                  noutput = state_output new_state
+                False -> Bad "Invalid return type"
+        Bad descr -> Bad descr
+      where 
+        fstate = 
+          case get_fstate args fargs (state_add_scope Map.empty state) of 
+            Ok (State (argenv:_) nstore nnext noutput) -> 
+              Ok (State (argenv:env_stack) nstore nnext noutput)
+            Bad descr -> Bad descr
+        get_fstate args fargs state =
+          case (args, fargs) of 
+            (FCArguments args, (tt, ident):rest) ->
+              case args of 
+                FOneArgument expr -> get_args expr FNoArguments
+                FManyArguments expr rest -> get_args expr (FCArguments rest)
+              where
+                get_args expr frest = 
+                  case interpret_expression expr state of 
+                    Ok (value, nstate) -> 
+                      case get_fstate frest rest nstate of 
+                        Ok nstate -> 
+                          Ok (state_add_variable ident (tt, value) nstate)
+                        Bad descr -> Bad descr
+                    Bad descr -> Bad descr
+            (FNoArguments, _:_) -> Bad "Too few arguments"
+            (FCArguments _, []) -> Bad "Too many arguments"
+            (FNoArguments, []) -> Ok state
+    _ -> Bad "Invalid function call"
 
 interpret_statement :: Statement -> StateData -> Err (Value, StateData)
 interpret_statement stmt state = 
@@ -109,10 +168,12 @@ interpret_statement stmt state =
     VIdent i -> case state_value_lookup i state of
       Just (_, v) -> Ok (v, state)
       Nothing -> Bad ((show i) ++ " not found")
+    VFunc fdecl -> interpret_function_decl fdecl state
+    VCall call -> interpret_call call state
 
 interpret_expression :: Exp -> StateData -> Err (Value, StateData)
-interpret_expression exp state = 
-  case exp of
+interpret_expression expr state = 
+  case expr of
     EAdd f1 f2 -> evaluate f1 f2 state add'
     ESub f1 f2 -> evaluate f1 f2 state sub'
     EMul f1 f2 -> evaluate f1 f2 state mul'
@@ -134,8 +195,8 @@ interpret_expression exp state =
     ELiteral e -> interpret_statement e state
   where 
     evaluate f1 f2 state func = 
-      case interpret_expression f1 state of 
-        Ok (value1, new_state1) -> 
+      case interpret_expression f1 state of
+        Ok (value1, new_state1) ->
           case interpret_expression f2 new_state1 of 
             Ok (value2, new_state2) -> 
               case func value1 value2 of 
@@ -175,7 +236,7 @@ interpret_declaration decl state =
           Bad descr -> Bad descr
       where
         add_to_state ident value state = 
-          case Map.lookup ident (state_top_env state) of
+          case Map.lookup ident (state_top_scope state) of
             Nothing -> Ok (ValueVoid, new_state) where
               new_state = state_add_variable ident (tt, value) state
             Just _ -> Bad ((show ident) ++ " already declared")
@@ -204,12 +265,14 @@ interpret_assignment stmt expr state =
     _ -> Bad "Invalid lvalue"
 
 interpret_scope :: Code -> StateData -> Err (Value, StateData)
-interpret_scope code (State (t:rest) store next) =
-  case interpret code (State (Map.empty:t:rest) store next) of
-    Ok (value, State _ store next) -> Ok (value, (State (t:rest) store next))
+interpret_scope code (State (t:rest) store next output) =
+  case interpret code (State (Map.empty:t:rest) store next output) of
+    Ok (value, State _ store next output) -> 
+      Ok (value, (State (t:rest) store next output))
     Bad descr -> Bad descr
 
-interpret_condition :: Exp -> Code -> Code -> StateData -> Err (Value, StateData)
+interpret_condition :: Exp -> Code -> Code -> StateData -> 
+  Err (Value, StateData)
 interpret_condition expr code1 code2 state = 
   case interpret_expression expr state of 
     Ok (value, new_state) -> 
@@ -227,17 +290,17 @@ interpret_while expr code state =
           case interpret_scope code new_state of 
             Ok (value, state) -> 
               case interpret_while expr code state of 
-                Ok (next_value, next_state) -> 
-                  Ok ((concat_outputs value next_value), next_state)
-                Bad descr -> Bad (concat_descr value descr)
+                Ok (next_value, next_state) -> Ok (next_value, next_state)
+                Bad descr -> Bad descr
             Bad descr -> Bad descr
         ValueBool False -> Ok (ValueVoid, new_state)
     Bad descr -> Bad descr
 
 interpret_print :: Exp -> StateData -> Err (Value, StateData)
-interpret_print exp state =
-  case interpret_expression exp state of 
-    Ok (value, state) -> Ok ((ValueOutputString (show' value)), state)
+interpret_print expr state =
+  case interpret_expression expr state of 
+    Ok (value, state) -> Ok (ValueVoid, state_set_output str state) where
+      str = (state_output state) ++ show' value ++ "\n"
     Bad descr -> Bad descr
 
 interpret_line :: Line -> StateData -> Err (Value, StateData)
@@ -255,11 +318,19 @@ interpret :: Code -> StateData -> Err (Value, StateData)
 interpret code state = 
     case code of
       CCode line rest ->
-        case interpret_line line state of 
-          Ok (value, new_state) -> 
-            case interpret rest new_state of
-              Ok (next_value, state) -> 
-                Ok (concat_outputs value next_value, state)
-              Bad descr -> Bad (concat_descr value descr)
-          Bad descr -> Bad descr
+        case line of 
+          LReturn expr -> 
+            case interpret_expression expr state of
+              Ok (value, state) -> Ok (ValueReturn value, state)
+              Bad descr -> Bad descr
+          _ ->
+            case interpret_line line state of 
+              Ok (ValueReturn value, new_state) -> 
+                Ok (ValueReturn value, new_state)
+              Ok (value, new_state) -> 
+                case interpret rest new_state of
+                  Ok (ValueReturn value, state) -> 
+                    Ok (ValueReturn value, state)
+                  ret -> ret
+              Bad descr -> Bad descr
       CEmpty -> Ok (ValueVoid, state)
