@@ -1,0 +1,82 @@
+auto modulo = [](int a, int b) -> int {
+  return a - b * (a / b);
+};
+
+auto int_to_sgn = [](int a) -> auto {
+  if a == 0 {
+    return "0";
+  };
+  if a == 1 {
+    return "1";
+  };
+  if a == 2 {
+    return "2";
+  };
+  if a == 3 {
+    return "3";
+  };
+  if a == 4 {
+    return "4";
+  };
+  if a == 5 {
+    return "5";
+  };
+  if a == 6 {
+    return "6";
+  };
+  if a == 7 {
+    return "7";
+  };
+  if a == 8 {
+    return "8";
+  };
+  if a == 9 {
+    return "9";
+  };
+};
+
+auto int_to_string = [](int n) -> string {
+  string result;
+  if n == 0 {
+    return "0";
+  };
+  while n > 0 {
+    result = int_to_sgn(modulo(n, 10)) + result;
+    n = n / 10;
+  };
+  return result;
+};
+
+auto print_fibs = [](int n) -> void {
+  string result;
+  auto fib = [](int n) -> int {
+    if n <= 2 {
+      return n;
+    };
+    return fib(n - 1) + fib(n - 2);
+  };
+  int it = 1;
+  while it < n {
+    result += (int_to_string(fib(it)) + " ");
+    it++;
+  };
+  print result;
+};
+
+print "fibbonacci numbers: ";
+print_fibs(15);
+
+auto make_incrementer = [](int a) -> auto {
+  return [](int n) -> int {
+    return a + n;
+  };
+};
+
+auto apply = [](int n, auto f) -> auto {
+  return f(n);
+};
+
+print apply(10, [](int n) -> int {
+  return n + 1;
+});
+
