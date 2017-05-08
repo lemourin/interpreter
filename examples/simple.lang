@@ -76,7 +76,9 @@ auto apply = [](int n, auto f) -> auto {
   return f(n);
 };
 
-print apply(10, [](int n) -> int {
+print apply(41, [](int n) -> int {
   return n + 1;
 });
+
+print apply(40, make_incrementer(2));
 
