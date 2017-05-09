@@ -1,3 +1,27 @@
+auto check_ok = [](auto ret, auto target) -> string {
+  if ret == target {
+    return "OK";
+  } else {
+    return "FAIL";
+  };
+};
+
+auto make_array = []() -> auto {
+  return [](auto idx) -> auto {
+    return 0;
+  };
+};
+
+auto put_array = [](auto idx, auto value, auto arr) -> auto {
+  return [](auto i) -> auto {
+    if idx == i {
+      return value;
+    } else {
+      return arr(i);
+    };
+  };
+};
+
 auto modulo = [](int a, int b) -> int {
   return a - b * (a / b);
 };
@@ -47,7 +71,17 @@ auto int_to_string = [](int n) -> string {
   return result;
 };
 
-auto print_fibs = [](int n) -> void {
+auto print_array = [](int cnt, auto arr) -> string {
+  int i = 0;
+  string result;
+  while i < cnt {
+    result += (int_to_string(arr(i)) + " ");
+    i++;
+  };
+  return result;
+};
+
+auto print_fibs = [](int n) -> string {
   string result;
   auto fib = [](int n) -> int {
     if n <= 2 {
@@ -60,11 +94,10 @@ auto print_fibs = [](int n) -> void {
     result += (int_to_string(fib(it)) + " ");
     it++;
   };
-  print result;
+  return result;
 };
 
-print "fibbonacci numbers: ";
-print_fibs(15);
+print check_ok(print_fibs(10), "1 2 3 5 8 13 21 34 55 ");
 
 auto make_incrementer = [](int a) -> auto {
   return [](int n) -> int {
@@ -76,11 +109,11 @@ auto apply = [](int n, auto f) -> auto {
   return f(n);
 };
 
-print apply(41, [](int n) -> int {
+print check_ok(42, apply(41, [](int n) -> int {
   return n + 1;
-});
+}));
 
-print apply(40, make_incrementer(2));
+print check_ok(42, apply(40, make_incrementer(2)));
 
 auto factorial = [](int n) -> int {
   if (n == 0) {
@@ -89,7 +122,28 @@ auto factorial = [](int n) -> int {
   return n * factorial(n - 1);
 };
 
-print make_incrementer(20)(22);
-print [](int a) -> int { return a; }(42);
-print apply(10, factorial);
+print check_ok(42, make_incrementer(20)(22));
+print check_ok(42, [](int a) -> int { return a; }(42));
+print check_ok(apply(10, factorial), 3628800);
+
+auto gcd = [](int a, int b) -> int {
+  if b == 0 {
+    return a;
+  } else {
+    return gcd(b, (modulo(a, b)));
+  };
+};
+
+print check_ok(gcd(42 * 17, 42 * 83), 42);
+
+auto sequence = [](int cnt) -> auto {
+  auto arr = make_array();
+  int it = 0;
+  while it < cnt {
+    arr = put_array(it, it, arr);
+    it++;
+  };
+  return arr;
+};
+print check_ok(print_array(10, sequence(10)), "0 1 2 3 4 5 6 7 8 9 ");
 
