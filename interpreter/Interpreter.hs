@@ -133,20 +133,21 @@ interpret_declaration decl state =
             False -> Bad "Type mismatch"
           Bad descr -> Bad descr
       where
-        add_to_state ident value state =
+        add_to_state ident value state@State { environment_stack = top:rest } =
           case Map.lookup ident (state_top_scope state) of
             Nothing -> Ok (ValueVoid, new_state) where
               new_state =
                 case value of
-                  ValueFunction (_:env) ret arg code ->
+                  ValueFunction (ftop:env) ret arg code ->
                     state {
-                      environment_stack = ntop:env,
+                      environment_stack = ntop:rest,
                       store = nstore,
                       next = nnext
                     } where
-                      ntop = Map.insert ident next (state_top_scope state)
+                      ntop = Map.insert ident next top
+                      nftop = Map.insert ident next ftop
                       nstore = Map.insert next (tt, nvalue) (state_store state)
-                      nvalue = ValueFunction (ntop:env) ret arg code
+                      nvalue = ValueFunction (nftop:env) ret arg code
                       nnext = next + 1
                       next = state_next state
                   _ -> state_add_variable ident (tt, value) state
