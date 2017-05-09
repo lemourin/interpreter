@@ -198,10 +198,7 @@ interpret_while expr code state =
       case value of
         ValueBool True ->
           case interpret_scope code new_state of
-            Ok (value, state) ->
-              case interpret_while expr code state of
-                Ok (next_value, next_state) -> Ok (next_value, next_state)
-                Bad descr -> Bad descr
+            Ok (value, state) -> interpret_while expr code state
             Bad descr -> Bad descr
         ValueBool False -> Ok (ValueVoid, new_state)
     Bad descr -> Bad descr
@@ -237,10 +234,6 @@ interpret code state =
             case interpret_line line state of
               Ok (ValueReturn value, new_state) ->
                 Ok (ValueReturn value, new_state)
-              Ok (value, new_state) ->
-                case interpret rest new_state of
-                  Ok (ValueReturn value, state) ->
-                    Ok (ValueReturn value, state)
-                  ret -> ret
+              Ok (value, new_state) -> interpret rest new_state
               Bad descr -> Bad descr
       CEmpty -> Ok (ValueVoid, state)
