@@ -5,6 +5,7 @@ import LexLang
 import ParLang
 import ErrM
 import Interpreter
+import State
 
 main = interact lang
 
