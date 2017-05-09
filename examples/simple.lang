@@ -89,5 +89,7 @@ auto factorial = [](int n) -> int {
   return n * factorial(n - 1);
 };
 
+print make_incrementer(20)(22);
+print [](int a) -> int { return a; }(42);
 print apply(10, factorial);
 

@@ -24,9 +24,9 @@ interpret_function_decl (FFunctionDecl args ret code) state@State {
                 (tt, ident):(extract_args (FTypedArguments rest))
 
 interpret_call :: Call -> StateData -> Err (Value, StateData)
-interpret_call (FCall ident args) state =
-  case state_value_lookup ident state of
-    Just func@(_, ValueFunction env_stack ret fargs code) ->
+interpret_call (FCall stmt args) state =
+  case interpret_statement stmt state of
+    Ok (ValueFunction env_stack ret fargs code, state) ->
       case fstate of
         Ok fstate ->
           case interpret_scope code fstate of

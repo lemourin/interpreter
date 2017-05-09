@@ -57,7 +57,7 @@ ENonEmptyExp.  ManyExp      ::= NonEmptyExp ;
 EOneExp.       NonEmptyExp  ::= Exp ;
 EMoreExp.      NonEmptyExp  ::= Exp "," NonEmptyExp ;
 
-FCall.            Call                  ::= Ident "(" Arguments ")" ;
+FCall.            Call                  ::= Statement "(" Arguments ")" ;
 FCArguments.      Arguments             ::= NonEmptyArguments ;
 FNoArguments.     Arguments             ::= ;
 FOneArgument.     NonEmptyArguments     ::= Exp ;
