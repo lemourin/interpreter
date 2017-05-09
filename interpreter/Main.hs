@@ -14,6 +14,6 @@ lang s =
     Ok a = pCode (myLexer s) 
   in 
     case interpret a state_empty of 
-      Ok (_, state) -> state_output state ++ "\n"
+      Ok (_, state) -> state_output state
       Bad err -> err ++ "\n"
 
