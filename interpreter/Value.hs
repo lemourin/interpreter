@@ -30,7 +30,10 @@ sub' _ _ = Bad "sub' :: Invalid types"
 mul' (ValueInteger v1) (ValueInteger v2) = Ok (ValueInteger (v1 * v2))
 mul' _ _ = Bad "mul' :: Invalid types"
 
-div' (ValueInteger v1) (ValueInteger v2) = Ok (ValueInteger (v1 `div` v2))
+div' (ValueInteger v1) (ValueInteger v2) =
+  case v2 of
+    0 -> Bad "div' :: Division by zero"
+    _ -> Ok (ValueInteger (v1 `div` v2))
 div' _ _ = Bad "div' :: Invalid types"
 
 equal' (ValueInteger v1) (ValueInteger v2) = Ok (ValueBool (v1 == v2))
