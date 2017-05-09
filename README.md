@@ -8,8 +8,8 @@ a little bit different are:
   the `C++11` lambda syntax (`[](int arg1, int arg2) -> void`)
 - pseudo-polymorphic types: `array[type]`,  
   `function[type1, type2 -> return_type]`, `tuple[t1, t2, ...]`
-- no regular `C` for: `for (int i = 0; i < n; i++)`, for-each instead:
+- no regular `C` for: `for (int i = 0; i < n; i++)`, for-each instead:  
   `for i in container`
-- imported `auto` keyword from `C++11`
-
-
+- `auto` keyword which can contain variable of any type
+- no `main` function, code is executed line by line
+- `print expr` - prints the value of `expr` to `stdout`
