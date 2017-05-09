@@ -20,6 +20,11 @@ show' (ValueInteger int) = show int
 show' (ValueBool bool) = show bool
 show' ValueVoid = ""
 
+show_type Tint = "int"
+show_type Tbool = "bool"
+show_type Tstring = "string"
+show_type Tauto = "auto"
+
 add' (ValueInteger v1) (ValueInteger v2) = Ok (ValueInteger (v1 + v2))
 add' (ValueString v1) (ValueString v2) = Ok (ValueString (v1 ++ v2))
 add' _ _ = Bad "add' :: Invalid types"
@@ -88,3 +93,16 @@ match_type tt value =
     (Tvoid, ValueVoid) -> True
     (Tauto, _) -> True
     _ -> False
+
+get_type :: Value -> Type
+get_type value =
+  case value of
+    ValueInteger _ -> Tint
+    ValueBool _ -> Tbool
+    ValueString _ -> Tstring
+    ValueVoid -> Tvoid
+    _ -> Tauto
+
+match_type_error :: Type -> Value -> String
+match_type_error tt value =
+  "Expected type " ++ show_type tt ++ ", got " ++ show_type (get_type value)

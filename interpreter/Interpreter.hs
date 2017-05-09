@@ -3,6 +3,7 @@ module Interpreter where
 import AbsLang
 import LexLang
 import ParLang
+import PrintLang
 import ErrM
 import Value
 import State
@@ -24,7 +25,7 @@ interpret_function_decl (FFunctionDecl args ret code) state@State {
                 (tt, ident):(extract_args (FTypedArguments rest))
 
 interpret_call :: Call -> StateData -> Err (Value, StateData)
-interpret_call (FCall stmt args) state =
+interpret_call (FCall stmt call_args) state =
   case interpret_statement stmt state of
     Ok (ValueFunction env_stack ret fargs code, state) ->
       case fstate of
@@ -38,11 +39,11 @@ interpret_call (FCall stmt args) state =
               case match_type ret value of
                 True -> Ok (value, new_state { environment_stack = nenv }) where
                   nenv = state_environment state
-                False -> Bad "Invalid return type"
+                False -> Bad (match_type_error ret value)
         Bad descr -> Bad descr
       where
         fstate =
-          case get_fstate args fargs (state_add_scope Map.empty state) of
+          case get_fstate call_args fargs (state_add_scope Map.empty state) of
             Ok (state@State { environment_stack = argenv:_ }) ->
               Ok (state { environment_stack = argenv:env_stack })
             Bad descr -> Bad descr
@@ -61,10 +62,12 @@ interpret_call (FCall stmt args) state =
                           Ok (state_add_variable ident (tt, value) nstate)
                         Bad descr -> Bad descr
                     Bad descr -> Bad descr
-            (FNoArguments, _:_) -> Bad "Too few arguments"
-            (FCArguments _, []) -> Bad "Too many arguments"
+            (FNoArguments, _:_) ->
+              Bad ("Too few arguments for " ++ (printTree stmt))
+            (FCArguments _, []) ->
+              Bad ("Too many arguments for " ++ (printTree stmt))
             (FNoArguments, []) -> Ok state
-    _ -> Bad "Invalid function call"
+    _ -> Bad ("Invalid function call " ++ (printTree stmt))
 
 interpret_statement :: Statement -> StateData -> Err (Value, StateData)
 interpret_statement stmt state =
@@ -130,7 +133,7 @@ interpret_declaration decl state =
         EDeclInit ident exp -> case interpret_expression exp state of
           Ok (value, new_state) -> case match_type tt value of
             True -> add_to_state ident value new_state
-            False -> Bad "Type mismatch"
+            False -> Bad (match_type_error tt value)
           Bad descr -> Bad descr
       where
         add_to_state ident value state@State { environment_stack = top:rest } =
@@ -163,14 +166,14 @@ interpret_assignment stmt expr state =
           case interpret_expression expr state of
             Ok (value, new_state) ->
               case match_type tt value of
-                False -> Bad "Type mismatch"
+                False -> Bad (match_type_error tt value)
                 True -> Ok (value, updated_state)
               where
                 Just (tt, _) = state_store_lookup location new_state
                 updated_state =
                   state_set_variable location (tt, value) new_state
             Bad descr -> Bad descr
-    _ -> Bad "Invalid lvalue"
+    _ -> Bad ("Invalid lvalue " ++ printTree stmt)
 
 interpret_scope :: Code -> StateData -> Err (Value, StateData)
 interpret_scope code state@State { environment_stack = env } =
