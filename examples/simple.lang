@@ -2,7 +2,7 @@ auto modulo = [](int a, int b) -> int {
   return a - b * (a / b);
 };
 
-auto int_to_sgn = [](int a) -> auto {
+auto int_to_sgn = [](int a) -> string {
   if a == 0 {
     return "0";
   };
@@ -81,4 +81,13 @@ print apply(41, [](int n) -> int {
 });
 
 print apply(40, make_incrementer(2));
+
+auto factorial = [](int n) -> int {
+  if (n == 0) {
+    return 1;
+  };
+  return n * factorial(n - 1);
+};
+
+print apply(10, factorial);
 
