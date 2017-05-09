@@ -152,10 +152,6 @@ interpret_declaration decl state =
                       next = state_next state
                   _ -> state_add_variable ident (tt, value) state
             Just _ -> Bad ((show ident) ++ " already declared")
-        default_value tt = case tt of
-          Tint -> ValueInteger 0
-          Tbool -> ValueBool False
-          Tstring -> ValueString ""
 
 interpret_assignment :: Statement -> Exp -> StateData -> Err (Value, StateData)
 interpret_assignment stmt expr state =

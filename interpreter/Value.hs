@@ -69,6 +69,13 @@ or' _ _ = Bad "or' :: Invalid types"
 and' (ValueBool v1) (ValueBool v2) = Ok (ValueBool (v1 && v2))
 and' _ _ = Bad "and' :: Invalid types"
 
+default_value :: Type -> Value
+default_value tt = case tt of
+  Tint -> ValueInteger 0
+  Tbool -> ValueBool False
+  Tstring -> ValueString ""
+  _ -> ValueVoid
+
 match_type :: Type -> Value -> Bool
 match_type tt value =
   case (tt, value) of
