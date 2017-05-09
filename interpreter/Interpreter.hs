@@ -113,16 +113,6 @@ interpret_expression expr state =
             Bad descr -> Bad descr
         Bad descr -> Bad descr
 
-match_type :: Type -> Value -> Bool
-match_type tt value =
-  case (tt, value) of
-    (Tint, ValueInteger _) -> True
-    (Tbool, ValueBool _) -> True
-    (Tstring, ValueString _) -> True
-    (Tvoid, ValueVoid) -> True
-    (Tauto, _) -> True
-    _ -> False
-
 interpret_declaration :: Declaration -> StateData -> Err (Value, StateData)
 interpret_declaration decl state =
   case decl of

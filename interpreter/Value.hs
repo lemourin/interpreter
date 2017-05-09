@@ -68,3 +68,13 @@ or' _ _ = Bad "or' :: Invalid types"
 
 and' (ValueBool v1) (ValueBool v2) = Ok (ValueBool (v1 && v2))
 and' _ _ = Bad "and' :: Invalid types"
+
+match_type :: Type -> Value -> Bool
+match_type tt value =
+  case (tt, value) of
+    (Tint, ValueInteger _) -> True
+    (Tbool, ValueBool _) -> True
+    (Tstring, ValueString _) -> True
+    (Tvoid, ValueVoid) -> True
+    (Tauto, _) -> True
+    _ -> False
