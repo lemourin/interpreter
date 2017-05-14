@@ -1,3 +1,5 @@
+// should work in the final version
+
 struct data {
   int x;
   int y;

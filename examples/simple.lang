@@ -1,3 +1,5 @@
+// working piece of code
+
 auto check_ok = [](auto ret, auto target) -> string {
   if ret == target {
     return "OK";
