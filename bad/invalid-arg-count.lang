@@ -1,0 +1,4 @@
+auto f = [](int a, int b) -> int {
+  return 0;
+};
+print f(0);

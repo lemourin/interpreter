@@ -1,0 +1,5 @@
+auto f = [](int a) -> int {
+  return a;
+};
+
+print f("");

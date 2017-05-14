@@ -1,0 +1,7 @@
+auto f = [](int a, int b) -> int {
+  print c;
+  return a + b;
+};
+
+int c = 5;
+print f(0, 0);

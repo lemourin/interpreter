@@ -1,0 +1,5 @@
+auto func = [](int a) -> int {
+  return "";
+};
+
+print func(0);
