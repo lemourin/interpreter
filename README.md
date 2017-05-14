@@ -13,3 +13,5 @@ a little bit different are:
 - `auto` keyword which can contain variable of any type
 - no `main` function, code is executed line by line
 - `print expr` - prints the value of `expr` to `stdout`
+
+To build the interpreter, type `make`.
