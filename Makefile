@@ -19,7 +19,7 @@ cabal: $(SOURCES_GRAMMAR)
 
 grammar/Makefile: grammar/lang.cf
 	pushd grammar; \
-	bnfc lang.cf --make; \
+	bnfc --make lang.cf; \
 	popd;
 
 grammar/AbsLang.hs: grammar/Makefile
